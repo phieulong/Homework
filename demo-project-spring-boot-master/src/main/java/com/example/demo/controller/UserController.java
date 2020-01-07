@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.exception.InputOutputException;
 import com.example.demo.model.dto.UserDto;
 import com.example.demo.model.request.CreateUserRequest;
 import com.example.demo.service.UserService;
@@ -29,9 +28,9 @@ public class UserController {
             @ApiResponse(code = 500, message="Server bi loi"),
     })
     @PostMapping("")
-    public ResponseEntity<?> createUser(@RequestBody @Valid CreateUserRequest createUserRequest) throws InputOutputException {
-        String result = userService.createUser(createUserRequest);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<?> createUser(@RequestBody @Valid CreateUserRequest createUserRequest){
+        UserDto userDto = userService.createUser(createUserRequest);
+        return ResponseEntity.ok(userDto);
     }
 
     @ApiOperation(value="Update info of a user", response = UserDto.class)
@@ -41,9 +40,9 @@ public class UserController {
             @ApiResponse(code = 500, message="Server bi loi"),
     })
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@RequestBody @Valid CreateUserRequest createUserRequest, @PathVariable int id) throws InputOutputException {
-        String result = userService.updateUser(createUserRequest, id);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<?> updateUser(@RequestBody @Valid CreateUserRequest createUserRequest, @PathVariable int id){
+        UserDto userDto = userService.updateUser(createUserRequest, id);
+        return ResponseEntity.ok(userDto);
     }
 
     @ApiOperation(value="Delete a user by id", response = UserDto.class)
@@ -52,9 +51,9 @@ public class UserController {
             @ApiResponse(code = 500, message="Server bi loi"),
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable int id) throws InputOutputException {
-        String result = userService.deleteUser(id);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<?> deleteUser(@PathVariable int id){
+        UserDto userDto = userService.deleteUser(id);
+        return ResponseEntity.ok(userDto);
     }
 
     @ApiOperation(value="Get a user by id", response = UserDto.class)
@@ -63,7 +62,7 @@ public class UserController {
             @ApiResponse(code = 500, message="Server bi loi"),
     })
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable int id) throws InputOutputException {
+    public ResponseEntity<?> getUserById(@PathVariable int id){
         UserDto user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
@@ -74,7 +73,7 @@ public class UserController {
             @ApiResponse(code = 500, message="Server bi loi"),
     })
     @GetMapping("/")
-    public ResponseEntity<?> getUserByEmailOrName( String email, String username) throws InputOutputException {
+    public ResponseEntity<?> getUserByEmailOrName(String email, String username){
         List<UserDto> user = userService.getUserByEmailOrUsername(email, username);
         return ResponseEntity.ok(user);
     }
@@ -85,7 +84,7 @@ public class UserController {
             @ApiResponse(code = 500, message="Server bi loi")
     })
     @GetMapping("")
-    public ResponseEntity<?> getListUser() throws InputOutputException {
+    public ResponseEntity<?> getListUser(){
         List<UserDto> users = userService.getListUser();
         return ResponseEntity.ok(users);
     }

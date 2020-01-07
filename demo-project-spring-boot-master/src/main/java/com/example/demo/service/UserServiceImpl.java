@@ -3,7 +3,6 @@ package com.example.demo.service;
 import com.example.demo.entity.User;
 import com.example.demo.exception.BadRequestException;
 import com.example.demo.exception.ErrorServerException;
-import com.example.demo.exception.InputOutputException;
 import com.example.demo.exception.RecordNotFoundException;
 import com.example.demo.model.dto.UserDto;
 import com.example.demo.model.mapper.UserMapper;
@@ -12,6 +11,8 @@ import com.example.demo.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -19,40 +20,45 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public String createUser(CreateUserRequest createUserRequest)throws InputOutputException{
-        if(!getUserByEmailOrUsername(null, createUserRequest.getUsername()).isEmpty()){
-            throw new BadRequestException("Da ton tai user nay");
-        }
+    public UserDto createUser(CreateUserRequest createUserRequest){
+        User user;
         try{
-            User user = new User();
-            BeanUtils.copyProperties(createUserRequest, user);
-            userRepository.saveAndFlush(user);
+            user = userRepository.findByUsername(createUserRequest.getUsername());
         }catch ( Exception ex){
             throw new ErrorServerException("Server bi loi");
         }
-        return "Thanh cong";
+        if(user != null){
+            throw new BadRequestException("username da bi trung");
+        }
+        user = new User();
+        try{
+            BeanUtils.copyProperties(createUserRequest, user);
+            userRepository.saveAndFlush(user);
+        }catch (Exception ex){
+            throw ex;
+        }
+        return UserMapper.toUserDto(user);
     }
 
-    public String updateUser(CreateUserRequest createUserRequest, int id) throws InputOutputException {
+    public UserDto updateUser(CreateUserRequest createUserRequest, int id){
         UserDto userDto = getUserById(id);
         if(userDto==null){
             throw new RecordNotFoundException("Khong tim thay user");
         }
-        if(userRepository.findUserByEmailOrUsername(null,createUserRequest.getUsername()).
-                get(0).getId() != userDto.getId())
+        if(!userRepository.findUserByEmailOrUsername(null,createUserRequest.getUsername()).isEmpty())
             throw new BadRequestException("username da bi trung");
+        User user = new User();
         try{
-            User user = new User();
             BeanUtils.copyProperties(createUserRequest, user);
             user.setId(id);
             userRepository.saveAndFlush(user);
         }catch (Exception ex){
             throw new ErrorServerException("Server bi loi");
         }
-        return "Thanh cong";
+        return UserMapper.toUserDto(user);
     }
 
-    public String deleteUser(int id) throws RecordNotFoundException{
+    public UserDto deleteUser(int id){
         UserDto userDto = userRepository.findUserById(id);
         if(userDto == null)
             throw new RecordNotFoundException("Khong tim thay user");
@@ -61,44 +67,47 @@ public class UserServiceImpl implements UserService {
                 userRepository.deleteById(id);
             }catch (Exception ex){
                 throw new ErrorServerException("Server bi loi");
-            }return "Thanh cong";
+            }
+        return userDto;
         }
     }
 
-    public UserDto getUserById(int id) throws InputOutputException {
+    public UserDto getUserById(int id){
+        UserDto userDto;
         try{
-            UserDto userDto = userRepository.findUserById(id);
-            if(userDto == null ){
-                throw new RecordNotFoundException("Khong tim thay user");
-            }
-            return userDto;
+            userDto = userRepository.findUserById(id);
         }catch (Exception ex){
             throw new ErrorServerException("Server bi loi");
         }
+        if(userDto == null )
+            throw new RecordNotFoundException("Khong tim thay user");
+        return userDto;
     }
 
     @Override
-    public List<UserDto> getUserByEmailOrUsername(String Email, String Username) throws  InputOutputException {
+    public List<UserDto> getUserByEmailOrUsername(String Email, String Username){
+        if(Email == null && Username == null)
+            return getListUser();
+        List<UserDto> userDtos;
         try {
-            List<UserDto> userDtos = userRepository.findUserByEmailOrUsername(Email, Username);
-            if(userDtos.isEmpty()){
-                throw new RecordNotFoundException("Khong tim thay user");
-            }
-            return userDtos;
+            userDtos = userRepository.findUserByEmailOrUsername(Email, Username);
         }catch (Exception ex){
             throw new ErrorServerException("Server bi loi");
         }
+        if(userDtos.isEmpty())
+            throw new RecordNotFoundException("Khong tim thay user");
+        return userDtos;
     }
 
-    public List<UserDto> getListUser() throws InputOutputException {
-        try {
-            List<UserDto> userDto = userRepository.findAllUser();
-            if(userDto.isEmpty()){
-                throw new RecordNotFoundException("Khong tim thay user");
-            }
-            return userDto;
-        }catch (Exception ex){
+    public List<UserDto> getListUser(){
+        List<UserDto> userDto = new ArrayList<>();
+        try{
+            userDto = userRepository.findAllUser();
+        }catch (Exception ex) {
             throw new ErrorServerException("Server bi loi");
         }
+        if(userDto.isEmpty())
+            throw new RecordNotFoundException("Khong tim thay user");
+        return userDto;
     }
 }

@@ -41,10 +41,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
 
-    @NotNull
     @Column(name="email")
     private String email;
 
+    @NotNull
     @Column(name="username", unique = true)
     private String username;
 
