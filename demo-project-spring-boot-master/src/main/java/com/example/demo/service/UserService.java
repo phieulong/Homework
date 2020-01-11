@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.model.dto.LoyaltyUserDto;
 import com.example.demo.model.dto.UserDto;
 import com.example.demo.model.request.CreateUserRequest;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,7 @@ public interface UserService {
 
     public UserDto deleteUser(int id);
 
-    public UserDto getUserById(int id);
+    public LoyaltyUserDto getUserById(int id);
 
     public List<UserDto> getUserByEmailOrUsername(String Email, String Username);
 

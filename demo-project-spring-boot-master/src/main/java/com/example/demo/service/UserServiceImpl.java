@@ -4,13 +4,17 @@ import com.example.demo.entity.User;
 import com.example.demo.exception.BadRequestException;
 import com.example.demo.exception.ErrorServerException;
 import com.example.demo.exception.RecordNotFoundException;
+import com.example.demo.model.dto.LoyaltyUserDto;
 import com.example.demo.model.dto.UserDto;
+import com.example.demo.model.mapper.LoyaltyUserMapper;
 import com.example.demo.model.mapper.UserMapper;
 import com.example.demo.model.request.CreateUserRequest;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +23,7 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
     @Autowired
     private UserRepository userRepository;
+    RestTemplate restTemplate = new RestTemplate();
 
     public UserDto createUser(CreateUserRequest createUserRequest){
         User user;
@@ -41,8 +46,8 @@ public class UserServiceImpl implements UserService {
     }
 
     public UserDto updateUser(CreateUserRequest createUserRequest, int id){
-        UserDto userDto = getUserById(id);
-        if(userDto==null){
+        LoyaltyUserDto loyaltyUserDto = getUserById(id);
+        if(loyaltyUserDto == null){
             throw new RecordNotFoundException("Khong tim thay user");
         }
         if(!userRepository.findUserByEmailOrUsername(null,createUserRequest.getUsername()).isEmpty())
@@ -72,7 +77,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    public UserDto getUserById(int id){
+    public LoyaltyUserDto getUserById(int id){
         UserDto userDto;
         try{
             userDto = userRepository.findUserById(id);
@@ -81,7 +86,9 @@ public class UserServiceImpl implements UserService {
         }
         if(userDto == null )
             throw new RecordNotFoundException("Khong tim thay user");
-        return userDto;
+        String fooResourceUrl = "http://localhost:8181/api/loyaltyUser/"+userDto.getUsername();
+        ResponseEntity<Integer> response = restTemplate.getForEntity(fooResourceUrl, Integer.class);
+        return LoyaltyUserMapper.toLoyaltyUserDto(userDto,response.getBody());
     }
 
     @Override

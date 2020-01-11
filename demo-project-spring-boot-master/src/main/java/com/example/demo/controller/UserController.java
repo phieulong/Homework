@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.model.dto.LoyaltyUserDto;
 import com.example.demo.model.dto.UserDto;
 import com.example.demo.model.request.CreateUserRequest;
 import com.example.demo.service.UserService;
@@ -56,15 +57,15 @@ public class UserController {
         return ResponseEntity.ok(userDto);
     }
 
-    @ApiOperation(value="Get a user by id", response = UserDto.class)
+    @ApiOperation(value="Get a user by id", response = LoyaltyUserDto.class)
     @ApiResponses({
             @ApiResponse(code = 404, message="Khong tim thay user"),
             @ApiResponse(code = 500, message="Server bi loi"),
     })
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable int id){
-        UserDto user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
+        LoyaltyUserDto loyaltyUserDto = userService.getUserById(id);
+        return ResponseEntity.ok(loyaltyUserDto);
     }
 
     @ApiOperation(value="Get a user by email or name", response = UserDto.class)
