@@ -3,21 +3,32 @@ package com.example.demo.controller;
 import com.example.demo.DemoProjectApplication;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import org.junit.Rule;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import org.assertj.core.api.Assertions;
+import org.junit.Assert;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.event.annotation.AfterTestClass;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.web.client.RestTemplate;
 
 
 import java.text.ParseException;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -31,11 +42,50 @@ public class UserControllerIntergrationTest {
 
     @Autowired
     private UserRepository userRepository;
+    private RestTemplate restTemplate;
+    private WireMockServer wireMockServer;
+    @BeforeEach
+    void configureSystemUnderTest() {
+        this.restTemplate = new RestTemplate();
+        this.wireMockServer = new WireMockServer(options()
+                .dynamicPort()
+        );
+        this.wireMockServer.start();
+        configureFor("localhost", this.wireMockServer.port());
+    }
 
-    private int port = 8089;
+    @Test
+    @DisplayName("Should ensure that WireMock server was started")
+    void shouldEnsureThatServerWasStarted() {
+        givenThat(WireMock.get(urlEqualTo("/")).willReturn(aResponse()
+                .withStatus(200)
+        ));
 
-    @Rule
-    public WireMockRule wireMockRule = new WireMockRule(port);
+        String serverUrl = buildServerUrl();
+        ResponseEntity<String> response = restTemplate.getForEntity(serverUrl, String.class);
+        Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+    private String buildServerUrl() {
+        return String.format("http://localhost:%d", this.wireMockServer.port());
+    }
+    @AfterEach
+    void stopWireMockServer() {
+        this.wireMockServer.stop();
+    }
+    @Test
+    public void testWireMockServer() {
+        String body = "10";
+        stubFor(WireMock.get(urlMatching("/api/loyaltyUser/.*"))
+                .willReturn(aResponse()
+                        .withStatus(HttpStatus.OK.value())
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(body)));
+
+        ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:8181/api/loyaltyUser/Sam Smith", String.class);
+        String value = response.getBody().toString();
+        Integer rs = Integer.parseInt(value);
+        Assert.assertEquals(response.getStatusCode(), HttpStatus.OK);
+    }
 
     @AfterTestClass
     public void resetDb() {
@@ -51,7 +101,8 @@ public class UserControllerIntergrationTest {
                     "  \"username\": \"tuan\"\n" +
                     "}";
         int id = userRepository.selectMaxId()+1;
-        mvc.perform(post("/api/user/")
+        mvc.perform(MockMvcRequestBuilders
+                .post("/api/user/")
                 .content(user)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
@@ -72,7 +123,8 @@ public class UserControllerIntergrationTest {
                 "  \"username\": \"sam\"\n" +
                 "}";
         int id = userRepository.selectMaxId()+1;
-        mvc.perform(post("/api/user/")
+        mvc.perform(MockMvcRequestBuilders
+                .post("/api/user/")
                 .content(user)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
@@ -84,9 +136,9 @@ public class UserControllerIntergrationTest {
 
     @Test
     public void updateUser() throws Exception {
-        createTestUser("sam",null, null);
+        createTestUser("Sam Smith",null, null);
 
-        String id = Integer.toString(userRepository.findByUsername("sam").getId());
+        String id = Integer.toString(userRepository.findByUsername("Sam Smith").getId());
 
         String user ="{\n" +
                         "  \"address\": \"Ha Long\",\n" +
@@ -94,7 +146,8 @@ public class UserControllerIntergrationTest {
                         "  \"username\": \"tuan\"\n" +
                         "}";
 
-        mvc.perform(put("/api/user/"+id)
+        mvc.perform(MockMvcRequestBuilders
+                .put("/api/user/"+id)
                 .content(user)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
@@ -106,11 +159,11 @@ public class UserControllerIntergrationTest {
     @Test
     public void updateUserReturnErrorMessage() throws Exception {
         resetDb();
-        createTestUser("sam",null, null);
+        createTestUser("Sam Smith",null, null);
 
         createTestUser("tuan",null, null);
 
-        String id = Integer.toString(userRepository.findByUsername("sam").getId());
+        String id = Integer.toString(userRepository.findByUsername("Sam Smith").getId());
 
         String user ="{\n" +
                         "  \"address\": \"Ha Long\",\n" +
@@ -118,7 +171,8 @@ public class UserControllerIntergrationTest {
                         "  \"username\": \"tuan\"\n" +
                         "}";
 
-        mvc.perform(put("/api/user/"+id)
+        mvc.perform(MockMvcRequestBuilders
+                .put("/api/user/"+id)
                 .content(user)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
@@ -132,7 +186,8 @@ public class UserControllerIntergrationTest {
     public void deleteUser() throws Exception {
         createTestUser("sam",null, null);
         String id = Integer.toString(userRepository.findByUsername("sam").getId());
-        mvc.perform(delete("/api/user/"+id).contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .delete("/api/user/"+id).contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -143,7 +198,8 @@ public class UserControllerIntergrationTest {
     public void deleteUserReturnNullMessage() throws Exception {
         resetDb();
 
-        mvc.perform(delete("/api/user/1").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .delete("/api/user/1").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -153,20 +209,22 @@ public class UserControllerIntergrationTest {
 
     @Test
     public void getUserById() throws Exception {
-        createTestUser("sam",null, null);
-        String id = Integer.toString(userRepository.findByUsername("sam").getId());
-        mvc.perform(get("/api/user/"+id).contentType(MediaType.APPLICATION_JSON))
+        createTestUser("Sam Smith",null, null);
+        String id = Integer.toString(userRepository.findByUsername("Sam Smith").getId());
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user/"+id).contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.username", is("sam")));
+                .andExpect(jsonPath("$.username", is("Sam Smith")));
     }
 
     @Test
     public void getUserByIdReturnNullMessage() throws Exception {
         resetDb();
 
-        mvc.perform(get("/api/user/1").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user/1").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -179,7 +237,8 @@ public class UserControllerIntergrationTest {
         resetDb();
         createTestUser("sam", null, null);
 
-        mvc.perform(get("/api/user/?username=sam").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user/?username=sam").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -193,7 +252,8 @@ public class UserControllerIntergrationTest {
         createTestUser("sam", "sam.smith@gmail.com", null);
         createTestUser("sam 2", "sam.smith@gmail.com", null);
 
-        mvc.perform(get("/api/user/?email=sam.smith@gmail.com").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user/?email=sam.smith@gmail.com").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -205,7 +265,8 @@ public class UserControllerIntergrationTest {
     public void getUserByEmailOrNameReturnNullMessageTest() throws Exception {
         resetDb();
 
-        mvc.perform(get("/api/user/?username=sam").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user/?username=sam").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -219,7 +280,8 @@ public class UserControllerIntergrationTest {
         resetDb();
         createTestUser("sam",null, null);
 
-        mvc.perform(get("/api/user").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -231,7 +293,8 @@ public class UserControllerIntergrationTest {
     public void getListUserReturnNullMessageTest() throws Exception {
         resetDb();
 
-        mvc.perform(get("/api/user").contentType(MediaType.APPLICATION_JSON))
+        mvc.perform(MockMvcRequestBuilders
+                .get("/api/user").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
